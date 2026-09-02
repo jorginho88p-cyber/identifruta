@@ -1001,12 +1001,45 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
 <script>
 (function(){
   var CHAVE = 'geofruit-pontos';
   var CHAVE_GUARDADOS = 'geofruit-guardados';
   var CHAVE_RECENTES = 'geofruit-recentes';
   var LIMITES_PT = L.latLngBounds([36.838, -9.526], [42.154, -6.189]);
+
+  // ---- Supabase: base de dados partilhada e contas reais ----
+  var SUPABASE_URL = 'https://efybnhiuzmiqadbxwtzw.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_bXcmOav1Oaw7YYDSWrdhgw_5RwqPBPn';
+  var supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  var perfilAtual = null;
+  var snapshotSpots = {};
+  function ehAdmin(){ return !!(perfilAtual && perfilAtual.papel === 'admin'); }
+  function podeGerirSpot(p){ return temConta() && (ehAdmin() || (p && p.criadoPorId && p.criadoPorId === meuUserId)); }
+  function limparParaGravar(p){ var c = Object.assign({}, p); delete c.criadoPorId; return c; }
+  function traduzErroAuth(err){
+    var m = (err && err.message) || '';
+    if (/invalid login credentials/i.test(m)) return 'Email ou palavra-passe errados.';
+    if (/already registered/i.test(m)) return 'Já existe uma conta com esse email. Usa «Entrar».';
+    if (/at least 6|6 characters/i.test(m)) return 'A palavra-passe precisa de pelo menos 6 caracteres.';
+    if (/rate limit|too many/i.test(m)) return 'Demasiadas tentativas. Espera um pouco e tenta de novo.';
+    if (/network|fetch/i.test(m)) return 'Sem ligação. Verifica a internet e tenta de novo.';
+    return 'Não foi possível: ' + m;
+  }
+  async function entrarComGoogle(){
+    try {
+      var r = await supa.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+      if (r.error) alert('O login com Google ainda não está ativo. Usa email e palavra-passe.');
+    } catch (e) {
+      alert('O login com Google ainda não está ativo. Usa email e palavra-passe.');
+    }
+  }
+
+  // window.storage só existe dentro do ambiente do Claude.ai. Se este ficheiro for aberto
+  // fora daí (ex.: enviado a outra pessoa e aberto diretamente no browser), criamos um
+  // substituto local com localStorage para o site continuar a funcionar (dados ficam
+  // apenas nesse browser, sem partilha entre pessoas).
 
   // window.storage só existe dentro do ambiente do Claude.ai. Se este ficheiro for aberto
   // fora daí (ex.: enviado a outra pessoa e aberto diretamente no browser), criamos um
@@ -1164,15 +1197,9 @@
   var meuUserId = null;
 
   async function obterMeuUserId(){
-    if (meuUserId) return meuUserId;
-    try {
-      var r = await window.storage.get('geofruit-user-id', false);
-      if (r && r.value){ meuUserId = r.value; return meuUserId; }
-    } catch (e) {}
-    meuUserId = 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
-    try { await window.storage.set('geofruit-user-id', meuUserId, false); } catch (e) {}
     return meuUserId;
   }
+
 
   var tiposSelecionados = new Set(Object.keys(LOCAIS));
   var frutasSelecionadas = new Set(Object.keys(FRUTAS));
@@ -3048,36 +3075,27 @@
   }
 
   async function carregarPontos(){
+    var brutos = [];
+    var falhou = false;
     try {
-      var resultado = await window.storage.get(CHAVE, true);
-      var brutos = resultado && resultado.value ? JSON.parse(resultado.value) : [];
-      pontos = brutos.filter(function(p){ return p && p.tipo && LOCAIS[p.tipo]; });
+      var res = await supa.from('spots').select('id,dados,criado_por');
+      if (res.error) throw res.error;
+      brutos = (res.data || []).map(function(r){
+        var p = r.dados || {};
+        p.id = r.id;
+        p.criadoPorId = r.criado_por;
+        return p;
+      });
     } catch (e) {
-      pontos = [];
+      falhou = true;
+      document.getElementById('status').textContent = 'Não foi possível ligar à base de dados. Recarrega a página.';
     }
-    var exemplos = exemplosPontos();
-    var exemploPorId = {};
-    exemplos.forEach(function(ex){ exemploPorId[ex.id] = ex; });
-
-    pontos = pontos.map(function(p){
-      if (exemploPorId[p.id]){
-        var atualizado = Object.assign({}, exemploPorId[p.id]);
-        if (p.comentarios && p.comentarios.length) atualizado.comentarios = p.comentarios;
-        if (p.avaliacoes && p.avaliacoes.length > (atualizado.avaliacoes || []).length) atualizado.avaliacoes = p.avaliacoes;
-        return atualizado;
-      }
-      if (!p.informacao && !p.nota && p.descricao) p.informacao = p.descricao;
-      return p;
-    });
-
-    var idsExistentes = new Set(pontos.map(function(p){ return p.id; }));
-    var novosExemplos = exemplos.filter(function(ex){ return !idsExistentes.has(ex.id); });
-    if (pontos.length === 0){
-      pontos = exemplos;
-      await guardarPontos();
-    } else {
-      pontos = pontos.concat(novosExemplos);
-      await guardarPontos();
+    pontos = brutos.filter(function(p){ return p && p.tipo && LOCAIS[p.tipo]; });
+    snapshotSpots = {};
+    pontos.forEach(function(p){ snapshotSpots[p.id] = JSON.stringify(limparParaGravar(p)); });
+    if (!falhou && pontos.length === 0){
+      pontos = exemplosPontos();
+      if (temConta()) await guardarPontos();
     }
     aplicarFiltros();
     document.getElementById('carregando').style.display = 'none';
