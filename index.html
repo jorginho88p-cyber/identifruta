@@ -601,6 +601,7 @@
       <p class="erro-senha" id="inicial-erro-senha" hidden>As palavras-passe não coincidem.</p>
       <button type="button" id="inicial-btn-voltar-login" class="link-rapido" hidden>← Voltar ao login</button>
       <button type="button" id="btn-entrar-inicial" class="botao-secundario botao-conta-principal">Entrar</button>
+      <button type="button" id="btn-google-inicial" class="botao-secundario botao-conta-principal" style="background:#fff;color:#3c4043;border:1px solid var(--linha);margin-top:8px;"><svg width="15" height="15" viewBox="0 0 48 48" style="vertical-align:-2px;margin-right:7px;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Continuar com Google</button>
     </div>
     <button type="button" id="btn-explorar-inicial" class="link-rapido botao-explorar-sem-conta">Explorar sem conta</button>
   </div>
@@ -944,6 +945,7 @@
         <p class="erro-senha" id="conta-erro-senha" hidden>As palavras-passe não coincidem.</p>
         <button type="button" id="conta-btn-voltar-login" class="link-rapido" hidden>← Voltar ao login</button>
         <button type="button" id="btn-entrar-conta" class="botao-secundario botao-conta-principal">Entrar</button>
+        <button type="button" id="btn-google-conta" class="botao-secundario botao-conta-principal" style="background:#fff;color:#3c4043;border:1px solid var(--linha);margin-top:8px;"><svg width="15" height="15" viewBox="0 0 48 48" style="vertical-align:-2px;margin-right:7px;"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Continuar com Google</button>
       </div>
     </div>
   </div>
@@ -2607,7 +2609,7 @@
       return;
     }
     container.innerHTML = p.comentarios.map(function(c, i){
-      var meu = c.userId && c.userId === meuUserId;
+      var meu = (c.userId && c.userId === meuUserId) || ehAdmin();
       return '<div class="comentario-item" data-indice="' + i + '">' +
         (c.autor ? '<strong style="display:block;font-size:0.74rem;color:var(--verde-escuro);margin-bottom:2px;">' + escapeHTML(c.autor) + '</strong>' : '') +
         '<span class="comentario-texto">' + escapeHTML(c.texto) + '</span>' +
@@ -2810,15 +2812,27 @@
       '</div>' +
     '</div>';
     if (ehTelefone) acoesHtml += '<a href="tel:' + p.contacto.replace(/\s/g, '') + '" class="botao-acao">📞 Ligar</a>';
-    acoesHtml += '<button type="button" class="botao-acao" id="btn-editar-spot">✏️ Editar</button>';
+    if (podeGerirSpot(p)){
+      acoesHtml += '<button type="button" class="botao-acao" id="btn-editar-spot">✏️ Editar</button>';
+      acoesHtml += '<button type="button" class="botao-acao" id="btn-apagar-spot" style="color:var(--terracota-escuro);">🗑️ Apagar</button>';
+    }
     document.getElementById('painel-acoes').innerHTML = acoesHtml;
 
-    document.getElementById('btn-editar-spot').addEventListener('click', function(){
+    var btnEditarSpot = document.getElementById('btn-editar-spot');
+    if (btnEditarSpot) btnEditarSpot.addEventListener('click', function(){
       if (!temConta()){
         abrirModalConta('Precisas de uma conta para editar spots.');
         return;
       }
       entrarModoEdicaoInline(p);
+    });
+    var btnApagarSpot = document.getElementById('btn-apagar-spot');
+    if (btnApagarSpot) btnApagarSpot.addEventListener('click', function(){
+      if (!confirm('Apagar este spot para toda a gente? Esta ação não tem volta.')) return;
+      removerPonto(p.id);
+      document.getElementById('painel-comentarios').hidden = true;
+      var btnMin = document.getElementById('painel-minimizado');
+      if (btnMin) btnMin.hidden = true;
     });
 
     document.getElementById('btn-como-chegar').addEventListener('click', function(e){
@@ -3070,33 +3084,83 @@
   }
 
   async function guardarPontos(){
+    if (!temConta()){
+      document.getElementById('status').textContent = 'Inicia sessão para guardar alterações.';
+      return;
+    }
     try {
-      await window.storage.set(CHAVE, JSON.stringify(pontos), true);
+      var atuais = {};
+      var paraGravar = [];
+      pontos.forEach(function(p){
+        var limpo = limparParaGravar(p);
+        var texto = JSON.stringify(limpo);
+        atuais[p.id] = true;
+        if (snapshotSpots[p.id] !== texto) paraGravar.push({ p: p, limpo: limpo, texto: texto });
+      });
+      var paraApagar = Object.keys(snapshotSpots).filter(function(id){ return !atuais[id]; });
+      for (var i = 0; i < paraGravar.length; i++){
+        var item = paraGravar[i];
+        var linha = { id: item.p.id, dados: item.limpo, atualizado_em: new Date().toISOString() };
+        if (!item.p.criadoPorId){
+          linha.criado_por = meuUserId;
+          item.p.criadoPorId = meuUserId;
+        }
+        var r = await supa.from('spots').upsert(linha);
+        if (r.error) throw r.error;
+        snapshotSpots[item.p.id] = item.texto;
+      }
+      for (var j = 0; j < paraApagar.length; j++){
+        var r2 = await supa.from('spots').delete().eq('id', paraApagar[j]);
+        if (r2.error) throw r2.error;
+        delete snapshotSpots[paraApagar[j]];
+      }
     } catch (e) {
-      document.getElementById('status').textContent = 'Não foi possível guardar. Tenta novamente.';
+      document.getElementById('status').textContent = 'Não foi possível guardar: ' + ((e && e.message) || 'tenta novamente.');
     }
   }
 
   async function carregarPersonalListas(){
-    try {
-      var r = await window.storage.get(CHAVE_GUARDADOS, false);
-      guardados = r && r.value ? JSON.parse(r.value) : [];
-    } catch (e) { guardados = []; }
-    try {
-      var r2 = await window.storage.get(CHAVE_RECENTES, false);
-      recentes = r2 && r2.value ? JSON.parse(r2.value) : [];
-    } catch (e) { recentes = []; }
+    guardados = [];
+    recentes = [];
+    if (temConta()){
+      try {
+        var res = await supa.from('dados_pessoais').select('chave,valor').in('chave', ['guardados', 'recentes']);
+        (res.data || []).forEach(function(l){
+          try {
+            if (l.chave === 'guardados') guardados = JSON.parse(l.valor) || [];
+            if (l.chave === 'recentes') recentes = JSON.parse(l.valor) || [];
+          } catch (e) {}
+        });
+      } catch (e) {}
+    } else {
+      try {
+        var r = await window.storage.get(CHAVE_GUARDADOS, false);
+        guardados = r && r.value ? JSON.parse(r.value) : [];
+      } catch (e) { guardados = []; }
+      try {
+        var r2 = await window.storage.get(CHAVE_RECENTES, false);
+        recentes = r2 && r2.value ? JSON.parse(r2.value) : [];
+      } catch (e) { recentes = []; }
+    }
     renderizarListaPins('lista-guardados', guardados, 'Ainda não guardaste nenhum spot.');
     renderizarListaPins('lista-recentes', recentes, 'Ainda não selecionaste nenhum spot.');
     aplicarFiltros();
   }
 
   async function guardarGuardados(){
-    try { await window.storage.set(CHAVE_GUARDADOS, JSON.stringify(guardados), false); } catch (e) {}
+    if (temConta()){
+      try { await supa.from('dados_pessoais').upsert({ user_id: meuUserId, chave: 'guardados', valor: JSON.stringify(guardados) }); } catch (e) {}
+    } else {
+      try { await window.storage.set(CHAVE_GUARDADOS, JSON.stringify(guardados), false); } catch (e) {}
+    }
   }
 
   async function guardarRecentes(){
-    try { await window.storage.set(CHAVE_RECENTES, JSON.stringify(recentes), false); } catch (e) {}
+    if (temConta()){
+      try { await supa.from('dados_pessoais').upsert({ user_id: meuUserId, chave: 'recentes', valor: JSON.stringify(recentes) }); } catch (e) {}
+    } else {
+      try { await window.storage.set(CHAVE_RECENTES, JSON.stringify(recentes), false); } catch (e) {}
+    }
   }
 
   map.on('click', function(e){
@@ -3559,12 +3623,7 @@
       criadoEm: new Date().toISOString(),
       estado: 'pendente'
     };
-    try {
-      var atual = await window.storage.get('geofruit-reports', true);
-      var lista = atual && atual.value ? JSON.parse(atual.value) : [];
-      lista.push(report);
-      await window.storage.set('geofruit-reports', JSON.stringify(lista), true);
-    } catch (e) {}
+    try { await supa.from('denuncias').insert({ dados: report }); } catch (e) {}
     document.getElementById('report-confirmacao').hidden = false;
     document.getElementById('report-texto').value = '';
     reportSpotId = null;
@@ -3605,15 +3664,48 @@
     }
   });
 
-  carregarConta();
   var contaAtual = null;
+
+  async function definirSessao(sessao){
+    if (sessao && sessao.user){
+      meuUserId = sessao.user.id;
+      var meta = sessao.user.user_metadata || {};
+      var nome = meta.full_name || meta.name || (sessao.user.email || '').split('@')[0];
+      contaAtual = { nome: nome, email: sessao.user.email || '', id: sessao.user.id };
+      try {
+        var r = await supa.from('perfis').select('nome,papel').eq('id', sessao.user.id).maybeSingle();
+        if (r && r.data){
+          perfilAtual = r.data;
+          if (r.data.nome) contaAtual.nome = r.data.nome;
+        }
+      } catch (e) {}
+      var menuInicial = document.getElementById('menu-inicial');
+      if (menuInicial && menuInicial.style.display !== 'none'){
+        menuInicial.style.display = 'none';
+        var menuOpcoes = document.getElementById('menu-opcoes');
+        if (menuOpcoes) menuOpcoes.hidden = false;
+        verificarPermissaoLocalizacao();
+      }
+      var overlayConta = document.getElementById('overlay-conta');
+      if (overlayConta) overlayConta.hidden = true;
+    } else {
+      contaAtual = null;
+      perfilAtual = null;
+      meuUserId = null;
+    }
+    atualizarIndicadorConta();
+  }
 
   async function carregarConta(){
     try {
-      var r = await window.storage.get('identifruta-conta', false);
-      if (r && r.value) contaAtual = JSON.parse(r.value);
+      var s = await supa.auth.getSession();
+      await definirSessao(s && s.data ? s.data.session : null);
     } catch (e) {}
-    atualizarIndicadorConta();
+    supa.auth.onAuthStateChange(function(evento, sessao){
+      if (evento === 'SIGNED_IN' || evento === 'SIGNED_OUT' || evento === 'USER_UPDATED'){
+        definirSessao(sessao);
+      }
+    });
   }
 
   function temConta(){ return !!contaAtual; }
@@ -3622,11 +3714,10 @@
     var el = document.getElementById('conta-indicador');
     if (!el) return;
     if (contaAtual){
-      el.innerHTML = '👤 <strong>' + escapeHTML(contaAtual.nome) + '</strong><button type="button" id="btn-sair-conta">Sair</button>';
+      el.innerHTML = '👤 <strong>' + escapeHTML(contaAtual.nome) + '</strong>' + (ehAdmin() ? ' <span style="background:var(--citrino);color:var(--verde-escuro);border-radius:6px;padding:1px 6px;font-size:0.66rem;font-weight:700;">ADMIN</span>' : '') + '<button type="button" id="btn-sair-conta">Sair</button>';
       document.getElementById('btn-sair-conta').addEventListener('click', async function(){
-        contaAtual = null;
-        try { await window.storage.set('identifruta-conta', '', false); } catch (e) {}
-        atualizarIndicadorConta();
+        try { await supa.auth.signOut(); } catch (e) {}
+        location.reload();
       });
     } else {
       el.innerHTML = '👤 Sem conta <button type="button" id="btn-entrar-indicador">Entrar</button>';
@@ -3677,7 +3768,6 @@
     document.getElementById('conta-motivo').textContent = motivo || 'Cria uma conta ou inicia sessão para continuares.';
     modoCriarContaModal = false;
     atualizarFormLoginConta();
-    document.getElementById('conta-campo-1').value = contaAtual ? contaAtual.nome : '';
     document.getElementById('overlay-conta').hidden = false;
   }
 
@@ -3690,11 +3780,23 @@
     atualizarFormLoginConta();
   });
 
-  async function guardarConta(nome, email){
-    if (!nome){ alert('Escreve o teu nome.'); return false; }
-    contaAtual = { nome: nome, email: email || '' };
-    try { await window.storage.set('identifruta-conta', JSON.stringify(contaAtual), false); } catch (e) {}
-    atualizarIndicadorConta();
+  async function autenticar(modoCriar, idCampo1, idCampo2, idCampo3){
+    if (modoCriar){
+      var nome = document.getElementById(idCampo1).value.trim();
+      var email = document.getElementById(idCampo2).value.trim();
+      var senha = document.getElementById(idCampo3).value;
+      if (!nome){ alert('Escreve o teu nome.'); return false; }
+      if (!email || email.indexOf('@') === -1){ alert('Escreve um email válido.'); return false; }
+      if (!senha || senha.length < 6){ alert('A palavra-passe precisa de pelo menos 6 caracteres.'); return false; }
+      var r = await supa.auth.signUp({ email: email, password: senha, options: { data: { full_name: nome } } });
+      if (r.error){ alert(traduzErroAuth(r.error)); return false; }
+      return true;
+    }
+    var email2 = document.getElementById(idCampo1).value.trim();
+    var senha2 = document.getElementById(idCampo2).value;
+    if (!email2 || email2.indexOf('@') === -1){ alert('Para entrares usa o teu email.'); return false; }
+    var r2 = await supa.auth.signInWithPassword({ email: email2, password: senha2 });
+    if (r2.error){ alert(traduzErroAuth(r2.error)); return false; }
     return true;
   }
 
@@ -3761,25 +3863,20 @@
   });
 
   document.getElementById('btn-entrar-inicial').addEventListener('click', async function(){
-    var nome, email;
-    if (modoCriarContaInicial){
-      if (!validarSenhasIguais('inicial-campo-3', 'inicial-campo-4', 'inicial-erro-senha')){
-        document.getElementById('inicial-erro-senha').hidden = false;
-        return;
-      }
-      nome = document.getElementById('inicial-campo-1').value.trim();
-      email = document.getElementById('inicial-campo-2').value.trim();
-    } else {
-      nome = document.getElementById('inicial-campo-1').value.trim();
-      email = '';
+    if (modoCriarContaInicial && !validarSenhasIguais('inicial-campo-3', 'inicial-campo-4', 'inicial-erro-senha')){
+      document.getElementById('inicial-erro-senha').hidden = false;
+      return;
     }
-    var ok = await guardarConta(nome, email);
+    var ok = await autenticar(modoCriarContaInicial, 'inicial-campo-1', 'inicial-campo-2', 'inicial-campo-3');
     if (ok){
       document.getElementById('menu-inicial').style.display = 'none';
       document.getElementById('menu-opcoes').hidden = false;
       verificarPermissaoLocalizacao();
+      carregarPersonalListas();
+      if (pontos.length === 0) carregarPontos();
     }
   });
+  document.getElementById('btn-google-inicial').addEventListener('click', entrarComGoogle);
   document.getElementById('btn-explorar-inicial').addEventListener('click', function(){
     document.getElementById('menu-inicial').style.display = 'none';
     verificarPermissaoLocalizacao();
@@ -3872,21 +3969,17 @@
   });
 
   document.getElementById('btn-entrar-conta').addEventListener('click', async function(){
-    var nome, email;
-    if (modoCriarContaModal){
-      if (!validarSenhasIguais('conta-campo-3', 'conta-campo-4', 'conta-erro-senha')){
-        document.getElementById('conta-erro-senha').hidden = false;
-        return;
-      }
-      nome = document.getElementById('conta-campo-1').value.trim();
-      email = document.getElementById('conta-campo-2').value.trim();
-    } else {
-      nome = document.getElementById('conta-campo-1').value.trim();
-      email = '';
+    if (modoCriarContaModal && !validarSenhasIguais('conta-campo-3', 'conta-campo-4', 'conta-erro-senha')){
+      document.getElementById('conta-erro-senha').hidden = false;
+      return;
     }
-    var ok = await guardarConta(nome, email);
-    if (ok) document.getElementById('overlay-conta').hidden = true;
+    var ok = await autenticar(modoCriarContaModal, 'conta-campo-1', 'conta-campo-2', 'conta-campo-3');
+    if (ok){
+      document.getElementById('overlay-conta').hidden = true;
+      carregarPersonalListas();
+    }
   });
+  document.getElementById('btn-google-conta').addEventListener('click', entrarComGoogle);
   document.getElementById('btn-fechar-conta').addEventListener('click', function(){
     document.getElementById('overlay-conta').hidden = true;
   });
@@ -3894,7 +3987,9 @@
     if (e.target === this) this.hidden = true;
   });
 
-  carregarPontos().then(function(){
+  carregarConta().then(function(){
+    return carregarPontos();
+  }).then(function(){
     carregarPersonalListas();
     try {
       var params = new URLSearchParams(location.search);
